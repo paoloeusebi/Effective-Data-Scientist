@@ -64,7 +64,24 @@ failure_pr <- predict(object = fit,
 
 sprintf("%1.1f%%", 100*failure_pr)
 ```
+## Diagnostics
 
+Compute raw residuals and plot agains fitted values. 
+
+```{r}
+df <- df %>%
+  mutate(residuals = residuals(fit),
+         linpred = predict(fit))
+gdf <- df %>%
+  group_by(cut(linpred,
+                    breaks = unique(quantile(linpred, (1:100)/101)))) %>%
+  summarise(residuals = mean(residuals),
+            linpred = mean(linpred))
+
+ggplot(data = gdf, aes(x = linpred, y = residuals)) +
+  geom_point() +
+  labs(x = "linear predictor")
+```
 
 
 ## Variation: probit
