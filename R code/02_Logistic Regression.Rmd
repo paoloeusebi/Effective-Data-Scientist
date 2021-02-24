@@ -1,0 +1,87 @@
+---
+title: "Logistic Regression"
+output: html_document
+---
+
+```{r setup, include=T}
+knitr::opts_chunk$set(echo = T, include = T, wwarning = F)
+```
+
+## O ring data
+
+The motivation for collecting this database was the explosion of the USA Space Shuttle Challenger on 28 January, 1986. An investigation ensued into the reliability of the shuttle's propulsion system. The explosion was eventually traced to the failure of one of the three field joints on one of the two solid booster rockets.
+Each of these six field joints includes two O-rings, designated as primary and secondary, which fail when phenomena called erosion and blowby both occur.
+
+The night before the launch a decision had to be made regarding launch safety. The discussion among engineers and managers leading to this decision included concern that the probability of failure of the O-rings depended on the temperature t at launch, which was forecase to be 31 degrees F. There are strong engineering reasons based on the composition of O-rings to support the judgment that failure probability may rise monotonically as temperature drops. One other variable, the pressure s at which safety testing for field join leaks was performed, was available, but its relevance to the failure process was unclear.
+
+Draper's paper includes a menacing figure graphing the number of field joints experiencing stress vs. liftoff temperature for the 23 shuttle flights previous to the Challenger disaster. No previous liftoff temperature was under 53 degrees F. Although tremendous extrapolation must be done from the given data to assess risk at 31 degrees F, it is obvious even to the layman "to foresee the unacceptably high risk created by launching at 31 degrees F." For more information, see Draper (1993) or the other previous analyses.
+
+The task is to predict the number of O-rings that will experience thermal distress for a given flight when the launch temperature is below freezing.
+
+```{r}
+library(DAAG)
+library(tidyverse)
+```
+
+We will use linear regression to infer the relationship between the percentage of lower status of the population (lstat) and house prices (medv).
+
+## First logistic regression model
+
+Fit of the basic logistic regression model for predicting failure (erosion or blowby) using the glm function. 
+
+```{r}
+#Load the dataset
+data("orings")
+df <- orings %>%
+  mutate(Erosion_Bin = if_else(Erosion > 0, 1, 0),
+         Blowby_Bin = if_else(Blowby > 0, 1, 0),
+         Total_Bin = if_else(Total > 0, 1, 0))
+head(df)
+
+# Fit a regression model
+
+fit <- glm(Total_Bin ~ Temperature,
+           family = binomial(link = "logit"),
+           data = df)
+fit
+confint(fit)
+# Plot logistic function
+ggplot(data = df, aes(x = Temperature, y = Total_Bin)) +
+  geom_point(alpha=0.5) +
+  geom_smooth(method = "glm", 
+    method.args = list(family = "binomial"), 
+    se = FALSE) 
+```
+
+## Prediction
+
+Estimating the predicted probability of failure at 31 degrees Fahreinet. 
+
+```{r}
+failure_pr <- predict(object = fit,
+        newdata = data.frame(Temperature=31),
+        type = "response")
+
+sprintf("%1.1f%%", 100*failure_pr)
+```
+
+
+
+## Variation: probit
+
+Use probit link from the glm function. 
+
+```{r}
+# Fit a regression model using probit link
+fit <- glm(Total_Bin ~ Temperature,
+           family = binomial(link = "probit"),
+           data = df)
+# Summary
+confint(fit)
+# Failure probability
+failure_pr <- predict(object = fit,
+        newdata = data.frame(Temperature=31),
+        type = "response")
+
+sprintf("%1.1f%%", 100*failure_pr)
+```
