@@ -149,6 +149,37 @@ ggplot(data = Boston, aes(x = lstat, y = medv, color = factor(chas))) +
   geom_smooth(method = "lm", se = F)
 ```
 
+
+## Linear algebra
+
+```{r}
+# Matrix regressions
+# The hat matrix is symmetric 
+#The hat matrix is idempotent, i.e.
+
+
+e <- as.matrix(residuals(fit1))
+X <- model.matrix(fit1)
+
+X[1:10,]
+X <- cbind(1, Boston$lstat)
+X[1:10,]
+Y <- Boston$medv
+Y[1:10]
+beta <- solve(t(X) %*% X) %*% t(X) %*% Y
+beta
+H <- X %*% solve(t(X) %*% X) %*% t(X)
+dim(H)
+cbind(fitted(fit1), H %*% Y)[1:10,]
+cbind(hatvalues(fit1), diag(H))[1:10,] 
+cbind(
+  e,                                         
+  Y - X %*% beta,                            
+  Y - H %*% Y,
+  (diag(length(Y)) - H) %*% Y                   
+)[1:10,]
+```
+
 ## Resources
 https://en.wikipedia.org/wiki/Markdown
 

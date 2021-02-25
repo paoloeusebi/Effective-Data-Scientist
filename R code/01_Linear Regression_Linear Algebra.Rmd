@@ -1,0 +1,77 @@
+---
+title: "Linear Regression"
+output: html_document
+---
+
+```{r setup, include=T}
+knitr::opts_chunk$set(echo = T, include = T, wwarning = F)
+```
+
+## Boston data
+
+Boston is a database with information of areas around Boston city, and the median house prices. It is included in the MASS R package.
+The essential data manipulation will be performed with the tidyverse collection of R packages.
+
+```{r}
+library(MASS)
+library(tidyverse)
+library(gridExtra)
+library(broom)
+```
+
+We will use linear regression to infer the relationship between the percentage of lower status of the population (lstat) and house prices (medv).
+
+## First linear regression model
+
+Fit of the basic linear regression model using lm function. 
+
+```{r}
+fit1 <- lm(medv ~ lstat, data = Boston)
+summary(fit1)
+```
+## Linear algebra
+
+First look at the model matrix
+```{r}
+# Residuals from regression
+e <- as.matrix(residuals(fit1))
+e[1:10]
+# Coefficients of the model matrix
+X <- model.matrix(fit1) # from lm object
+X[1:10,]
+
+X <- cbind(1, Boston$lstat) # from dataset
+X[1:10,]
+
+Y <- Boston$medv
+Y[1:10]
+```
+
+
+We now replicate exactly the coefficients estimated with the lm function by solving ordinary least square equations:
+
+$$ \beta = (X^TX)^{-1}X^TY$$
+
+```{r}
+beta <- solve(t(X) %*% X) %*% t(X) %*% Y
+beta
+```
+
+We now compute the H matrix.
+
+$$ H = X(X^TX)^{-1}X^T$$
+
+We check how the multiplication of $Y$ by $H$ give us the fitted values $\widehat Y$.
+
+```{r}
+H <- X %*% solve(t(X) %*% X) %*% t(X)
+dim(H)
+cbind(fitted(fit1), H %*% Y)[1:10,]
+cbind(hatvalues(fit1), diag(H))[1:10,] 
+cbind(
+  e,                                         
+  Y - X %*% beta,                            
+  Y - H %*% Y,
+  (diag(length(Y)) - H) %*% Y                   
+)[1:10,]
+```
