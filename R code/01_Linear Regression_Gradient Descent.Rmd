@@ -15,8 +15,6 @@ The essential data manipulation will be performed with the tidyverse collection 
 ```{r}
 library(MASS)
 library(tidyverse)
-library(gridExtra)
-library(broom)
 ```
 
 We will use linear regression to infer the relationship between the percentage of lower status of the population (lstat) and house prices (medv).
@@ -30,161 +28,72 @@ fit1 <- lm(medv ~ lstat, data = Boston)
 summary(fit1)
 ```
 
-##	Diagnostics
-We need to check several assumptions:
+##	Gradient descent
 
-* Constant variance of errors
-
-* Normal errors
-
-* Model structure
-
-
-### Constant variance of errors
-
-Let's plot the residuals vs. the fitted values. Constant symmetrical variation (homoschedasticity) should be observed in the vertical direction (A). Another possibility is to plot the square root of the absolute values of the residuals (B). 
 
 ```{r}
-df1 <- data.frame(residuals = fit1$residuals,
-                  sqrt_abs_residuals = sqrt(abs(fit1$residuals)),
-                  fitted = fit1$fitted.values)
-p1 <- ggplot(data = df1, aes(x = fitted, y = residuals)) +
-  geom_hline(yintercept = 0) +
-  geom_point(alpha = 0.5) +
-  labs(x = "fitted", 
-       y = "residuals",
-       title = "A")
+# squared error cost function
+cost <- function(X, y, theta) {
+  sum( (X %*% theta - y)^2 ) / (2*length(y))
+}
 
-p2 <- ggplot(data = df1, aes(x = fitted, y = sqrt_abs_residuals)) +
-  geom_point(alpha = 0.5) +
-  labs(x = "fitted", 
-       y = "sqrt(abs(residuals))",
-       title = "B")
+# learning rate and iteration limit
+alpha <- 0.001
+num_iters <- 100
 
-grid.arrange(p1, p2,  ncol = 2)
-```
+# keep history
+cost_history <- double(num_iters)
+theta_history <- list(num_iters)
 
-### Normal errors
+# initialize coefficients
+theta <- matrix(c(0,0), nrow=2)
 
-The normality of residuals can be assessed with a Q-Q plot (A) and a simple histogram (B).
+# add a column of 1's for the intercept coefficient
+X <- cbind(1, matrix(Boston$lstat))
+#X <- model.matrix(fit1)
+y <- Boston$medv
 
-```{r}
-df1 <- data.frame(residuals = fit1$residuals,
-                  sqrt_abs_residuals = sqrt(abs(fit1$residuals)),
-                  fitted = fit1$fitted.values)
-p1 <- ggplot(data = Boston, aes(sample = medv)) +
-  stat_qq() +
-  labs(title = "A")
+# gradient descent
+gradientDesc <- function(x, y, learn_rate, conv_threshold, n, max_iter) {
+  plot(x, y, col = "blue", pch = 20)
+  m <- runif(1, 0, 1)
+  c <- runif(1, 0, 1)
+  yhat <- m * x + c
+  MSE <- sum((y - yhat) ^ 2) / n
+  converged = F
+  iterations = 0
+  while(converged == F) {
+    ## Implement the gradient descent algorithm
+    m_new <- m - learn_rate * ((1 / n) * (sum((yhat - y) * x)))
+    c_new <- c - learn_rate * ((1 / n) * (sum(yhat - y)))
+    m <- m_new
+    c <- c_new
+    yhat <- m * x + c
+    MSE_new <- sum((y - yhat) ^ 2) / n
+    if(MSE - MSE_new <= conv_threshold) {
+      abline(c, m) 
+      converged = T
+      return(paste("Optimal intercept:", c, "Optimal slope:", m))
+    }
+    iterations = iterations + 1
+    if(iterations > max_iter) { 
+      abline(c, m) 
+      converged = T
+      return(paste("Optimal intercept:", c, "Optimal slope:", m))
+    }
+  }
+}
 
-p2 <- ggplot(data = df1, aes(x = residuals)) +
-  geom_histogram(alpha = 0.5) +
-  labs(x = "residuals",
-       title = "B")
 
-grid.arrange(p1, p2,  ncol = 2)
-```
+# Run the function 
 
-### Model structure
+gradientDesc(Boston$lstat, Boston$medv, 0.0000293, 0.001, 32, 2500000)
 
-Check the relationship between the dependent variable (y-axis) and independent variable (x-axis). The regression line is added.
 
-```{r}
-ggplot(data = Boston, aes(x = lstat, y = medv)) +
-  geom_point(alpha=0.5) +
-  geom_smooth(method = "lm", se = F) +
-  labs(x="lower status of the population (percent)", 
-       y="median value of owner-occupied homes in $1000s")
-```
 
-Add an higher-order term (quadratic).
-```{r}
-ggplot(data = Boston, aes(x = lstat, y = medv)) +
-  geom_point(alpha=0.5) +
-  geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = F) +
-  labs(x="lower status of the population (percent)", 
-       y="median value of owner-occupied homes in $1000s")
-```
-
-Evaluate the results of the linear regression with the quadratic term.
-
-```{r}
-fit2 <- lm(medv ~ lstat + I(lstat^2), data = Boston)
-summary(fit2) 
-```
-
-The $R^2$ increased to 0.64. Let's check the constant variance of errors now.
-
-```{r}
-df2 <- data.frame(residuals = fit2$residuals,
-                  sqrt_abs_residuals = sqrt(abs(fit2$residuals)),
-                  fitted = fit2$fitted.values)
-p1 <- ggplot(data = df2, aes(x = fitted, y = residuals)) +
-  geom_hline(yintercept = 0) +
-  geom_point(alpha = 0.5) +
-  labs(x = "fitted", 
-       y = "residuals",
-       title = "A")
-
-p2 <- ggplot(data = df2, aes(x = fitted, y = sqrt_abs_residuals)) +
-  geom_point(alpha = 0.5) +
-  labs(x = "fitted", 
-       y = "sqrt(abs(residuals))",
-       title = "B")
-
-grid.arrange(p1, p2,  ncol = 2)
-```
-
-## Interaction
-
-Let's see how interaction works adding the chas variable (1 if tract bounds river; 
-0 otherwise).
-```{r}
-fit3 <- lm(medv ~ lstat*factor(chas), data = Boston)
-summary(fit3) 
-```
-
-```{r}
-ggplot(data = Boston, aes(x = lstat, y = medv, color = factor(chas))) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = F)
 ```
 
 
-## Linear algebra
-
-```{r}
-# Matrix regressions
-# The hat matrix is symmetric 
-#The hat matrix is idempotent, i.e.
-
-
-e <- as.matrix(residuals(fit1))
-X <- model.matrix(fit1)
-
-X[1:10,]
-X <- cbind(1, Boston$lstat)
-X[1:10,]
-Y <- Boston$medv
-Y[1:10]
-beta <- solve(t(X) %*% X) %*% t(X) %*% Y
-beta
-H <- X %*% solve(t(X) %*% X) %*% t(X)
-dim(H)
-cbind(fitted(fit1), H %*% Y)[1:10,]
-cbind(hatvalues(fit1), diag(H))[1:10,] 
-cbind(
-  e,                                         
-  Y - X %*% beta,                            
-  Y - H %*% Y,
-  (diag(length(Y)) - H) %*% Y                   
-)[1:10,]
-```
 
 ## Resources
-https://en.wikipedia.org/wiki/Markdown
-
-http://faculty.cas.usf.edu/mbrannick/regression/Part3/Reg2IVMatrix.html
-
-http://www.stat.columbia.edu/~fwood/Teaching/w4315/Fall2009/lecture_11
-
-https://www.r-bloggers.com/2014/04/checking-glm-model-assumptions-in-r/
+https://www.r-bloggers.com/2017/02/implementing-the-gradient-descent-algorithm-in-r/
